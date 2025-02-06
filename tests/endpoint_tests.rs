@@ -1,7 +1,6 @@
 use std::net::TcpListener;
 
 #[tokio::test]
-
 async fn health_check_works() {
     let address = spawn_app();
 
@@ -32,6 +31,34 @@ async fn subscribe_to_newsletter_returns_200_for_valid_data() {
         .expect("Failed to execute request.");
 
     assert_eq!(200, response.status().as_u16());
+}
+
+#[tokio::test]
+async fn subscribe_to_newsletter_returns_400_for_invalid_data() {
+    let app_ip = spawn_app();
+    let client = reqwest::Client::new();
+    let test_cases = vec![
+        ("name=mark", "missing email"),
+        ("email=mark.gray@phasecurve.com", "missing name"),
+        ("", "missing email and name"),
+    ];
+
+    for (invalid_body, err) in test_cases {
+        let response = client
+            .post(&format!("{}/newsletters", &app_ip))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(invalid_body)
+            .send()
+            .await
+            .expect("Failed to post request");
+
+        assert_eq!(
+            400,
+            response.status().as_u16(),
+            "The API didn't fail with 400 as expected, for the payload {}",
+            err
+        )
+    }
 }
 
 fn spawn_app() -> String {

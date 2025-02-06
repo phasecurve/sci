@@ -12,10 +12,21 @@ pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     let server = HttpServer::new(|| {
         App::new()
             .route("/health-check", web::get().to(health_check))
-            .route("/newsletters", web::post().to(HttpResponse::Ok))
+            .route("/newsletters", web::post().to(newsletter_subscribe))
     })
     .listen(listener)?
     .run();
 
     Ok(server)
+}
+
+async fn newsletter_subscribe(_form: web::Form<Newsletter>) -> HttpResponse {
+    //let name = request::Query
+    HttpResponse::Ok().finish()
+}
+
+#[derive(serde::Deserialize)]
+struct Newsletter {
+    email: String,
+    name: String,
 }
