@@ -1,5 +1,7 @@
 use std::net::TcpListener;
 
+use sci::startup;
+
 #[tokio::test]
 async fn health_check_works() {
     let address = spawn_app();
@@ -64,7 +66,7 @@ async fn subscribe_to_newsletter_returns_400_for_invalid_data() {
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failewd to bind to a random port");
     let port = listener.local_addr().unwrap().port();
-    let server = sci::run(listener).expect("Failed to bind address");
+    let server = startup::run(listener).expect("Failed to bind address");
     // Spawn in the background task then discard tokio will clean up when the runtime is shut down
     let _ = tokio::spawn(server);
     format!("http://127.0.0.1:{}", port)
