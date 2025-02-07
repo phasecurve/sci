@@ -25,6 +25,7 @@ async fn newsletter_subscribe(_form: web::Form<Newsletter>) -> HttpResponse {
 }
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)]
 struct Newsletter {
     email: String,
     name: String,
