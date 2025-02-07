@@ -1,6 +1,7 @@
+use sqlx::{Connection, PgConnection};
 use std::net::TcpListener;
 
-use sci::startup;
+use sci::{configuration::get_config, startup};
 
 #[tokio::test]
 async fn health_check_works() {
@@ -21,6 +22,12 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_to_newsletter_returns_200_for_valid_data() {
     let app_ip = spawn_app();
+    let config = get_config().expect("Failed reading config");
+    let conn_str = config.db.connection_string();
+    let _conn = PgConnection::connect(&conn_str)
+        .await
+        .expect("Failed to connect to the db");
+
     let client = reqwest::Client::new();
 
     let body = "name=mark&email=mark.gray@phasecurve.com";
