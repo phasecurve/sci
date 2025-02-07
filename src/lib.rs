@@ -21,7 +21,6 @@ pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
 }
 
 async fn newsletter_subscribe(_form: web::Form<Newsletter>) -> HttpResponse {
-    //let name = request::Query
     HttpResponse::Ok().finish()
 }
 
