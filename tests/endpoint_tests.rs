@@ -38,7 +38,7 @@ async fn subscribe_to_newsletter_returns_200_for_valid_data() {
 
     assert_eq!(200, response.status().as_u16());
 
-    let saved = sqlx::query!("SELECT name, email FROM newsletters",)
+    let saved = sqlx::query!(r#"SELECT name, email FROM newsletters"#,)
         .fetch_one(&app.pool)
         .await
         .expect("Failed to get a saved newsletter sub");
