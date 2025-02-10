@@ -12,12 +12,12 @@ pub async fn newsletter_subscription(
 ) -> HttpResponse {
     match sqlx::query!(
         r#"
-        insert into newsletters (id, name, email, subscribed_at)
+        insert into newsletters (id, email, name, subscribed_at)
         values ($1, $2, $3, $4)
         "#,
         Uuid::new_v4(),
-        form.name,
         form.email,
+        form.name,
         Utc::now()
     )
     .execute(pool.get_ref())

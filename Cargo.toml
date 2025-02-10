@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Mark Gray <mark.gray@phasecurve.com>"]
 
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
+
 [lib]
 path = "src/lib.rs"
 
