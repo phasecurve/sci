@@ -30,7 +30,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Install Sqlx XLI
+      - name: Install Sqlx CLI
         run: cargo install sqlx-cli
           --version=${{ env.SQLX_VERSION }}
           --features ${{ env.SQLX_FEATURES }}
@@ -89,9 +89,6 @@ jobs:
          POSTGRES_DB: postgres
        ports:
          - 5432:5432
-    container:
-      image: xd009642/tarpaulin
-      options: --security-opt seccomp=unconfined
     steps:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
