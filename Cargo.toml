@@ -13,9 +13,11 @@ name = "sci"
 
 [dependencies]
 actix-web = "4"
+chrono = "0.4.39"
 config = "0.15.7"
 serde = { version = "1.0.217", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.13.1", features = ["v4"] }
 
 [dependencies.sqlx]
 version = "0.8.3"

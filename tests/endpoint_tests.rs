@@ -1,16 +1,17 @@
-use sqlx::{Connection, PgConnection};
+use sqlx::PgPool;
 use std::net::TcpListener;
 
 use sci::{configuration::get_config, startup};
+use startup::run;
 
 #[tokio::test]
 async fn health_check_works() {
-    let address = spawn_app();
+    let app = spawn_app().await;
 
     let client = reqwest::Client::new();
 
     let response = client
-        .get(&format!("{}/health-check", &address))
+        .get(&format!("{}/health-check", &app.addr))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -21,18 +22,12 @@ async fn health_check_works() {
 
 #[tokio::test]
 async fn subscribe_to_newsletter_returns_200_for_valid_data() {
-    let app_ip = spawn_app();
-    let config = get_config().expect("Failed reading config");
-    let conn_str = config.db.connection_string();
-    let _conn = PgConnection::connect(&conn_str)
-        .await
-        .expect("Failed to connect to the db");
-
+    let app = spawn_app().await;
     let client = reqwest::Client::new();
 
-    let body = "name=mark&email=mark.gray@phasecurve.com";
+    let body = "name=mark%20gray&email=mark.gray@phasecurve.com";
     let response = client
-        .post(&format!("{}/newsletters", &app_ip))
+        .post(&format!("{}/newsletters", &app.addr))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -40,11 +35,19 @@ async fn subscribe_to_newsletter_returns_200_for_valid_data() {
         .expect("Failed to execute request.");
 
     assert_eq!(200, response.status().as_u16());
+
+    let saved = sqlx::query!("SELECT name, email FROM newsletters",)
+        .fetch_one(&app.pool)
+        .await
+        .expect("Failed to get a saved newsletter sub");
+
+    assert_eq!(saved.email, "mark.gray@phasecurve.com");
+    assert_eq!(saved.name, "mark gray")
 }
 
 #[tokio::test]
 async fn subscribe_to_newsletter_returns_400_for_invalid_data() {
-    let app_ip = spawn_app();
+    let app = spawn_app().await;
     let client = reqwest::Client::new();
     let test_cases = vec![
         ("name=mark", "missing email"),
@@ -54,7 +57,7 @@ async fn subscribe_to_newsletter_returns_400_for_invalid_data() {
 
     for (invalid_body, err) in test_cases {
         let response = client
-            .post(&format!("{}/newsletters", &app_ip))
+            .post(&format!("{}/newsletters", &app.addr))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(invalid_body)
             .send()
@@ -70,11 +73,22 @@ async fn subscribe_to_newsletter_returns_400_for_invalid_data() {
     }
 }
 
-fn spawn_app() -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failewd to bind to a random port");
+async fn spawn_app() -> TestApp {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let port = listener.local_addr().unwrap().port();
-    let server = startup::run(listener).expect("Failed to bind address");
+    let addr = format!("http://127.0.0.1:{}", port);
+    let config = get_config().expect("Failed to get the config");
+    let pool = PgPool::connect(&config.db.connection_string())
+        .await
+        .expect("Failed to connect to db.");
+    let server = run(listener, pool.clone()).expect("Failed to bind addr");
+
     // Spawn in the background task then discard tokio will clean up when the runtime is shut down
     let _ = tokio::spawn(server);
-    format!("http://127.0.0.1:{}", port)
+    TestApp { addr, pool }
+}
+
+pub struct TestApp {
+    pub addr: String,
+    pub pool: PgPool,
 }
