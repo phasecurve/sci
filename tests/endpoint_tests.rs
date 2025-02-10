@@ -1,7 +1,9 @@
-use sqlx::PgPool;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
+use uuid::Uuid;
 
-use sci::{configuration::get_config, startup};
+use configuration::{get_config, DbSettings};
+use sci::{configuration, startup};
 use startup::run;
 
 #[tokio::test]
@@ -77,15 +79,35 @@ async fn spawn_app() -> TestApp {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let port = listener.local_addr().unwrap().port();
     let addr = format!("http://127.0.0.1:{}", port);
-    let config = get_config().expect("Failed to get the config");
-    let pool = PgPool::connect(&config.db.connection_string())
-        .await
-        .expect("Failed to connect to db.");
+    let mut config = get_config().expect("Failed to get the config");
+    config.db.db_name = Uuid::new_v4().to_string();
+    let pool = configure_db(&config.db).await;
     let server = run(listener, pool.clone()).expect("Failed to bind addr");
 
     // Spawn in the background task then discard tokio will clean up when the runtime is shut down
     let _ = tokio::spawn(server);
     TestApp { addr, pool }
+}
+
+pub async fn configure_db(config: &DbSettings) -> PgPool {
+    let mut conn = PgConnection::connect(&config.connection_string_no_name())
+        .await
+        .expect("Failed connecting to db");
+
+    conn.execute(format!(r#"create database "{}";"#, config.db_name).as_str())
+        .await
+        .expect("Failed to create db");
+
+    let pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to db");
+
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to migrate the test db.");
+
+    pool
 }
 
 pub struct TestApp {
